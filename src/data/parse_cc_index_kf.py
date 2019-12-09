@@ -10,12 +10,13 @@ import pandas as pd
 from tqdm import tqdm
 import urllib.request
 from multiprocessing import Pool
+import random
 
-storage_folder = '../data/index_paths/'
-file_prefix = 'https://commoncrawl.s3.amazonaws.com/'
 
-def read_every_line(fname,
-                    max_lines=-1):
+storage_folder = '../data/raw/index_paths/'
+remote_file_prefix = 'https://commoncrawl.s3.amazonaws.com/'
+
+def read_every_line(fname, max_lines=-1):
     lines = []
     with open(fname, encoding='utf-8') as f:
         for i, l in enumerate(f):
@@ -43,7 +44,7 @@ def save(url, filename):
 def list_multiprocessing(param_lst,
                          func,
                          **kwargs):
-    
+
     workers = kwargs.pop('workers')
 
     with Pool(workers) as p:
@@ -57,44 +58,46 @@ def list_multiprocessing(param_lst,
 
 def _apply_lst(args):
     params, func, num, kwargs = args
-    return num, func(*params,**kwargs)    
+    return num, func(*params,**kwargs)
 
 
 def process_index_file_line(line):
+    #
     assert type(line)==str
-    
+
     try:
         lst = line.replace('\n','').split()
         ts = lst[1]
         data = json.loads(line.replace('\n','').split(ts)[-1].strip())
     except:
         return ()
-    
+
     if data['status'] != '200':
         return ()
     else:
-        try:
-            language = data['languages']
-        except:
-            language = 'none'
-            
+#         try:
+#             language = data['languages']
+#         except:
+#             language = 'none'
+
         try:
             _tldextract = tldextract.extract(data['url'])
             tup = (ts,
                    data['url'],
                    _tldextract.suffix,
-                   data['length'],
-                   data['offset'],
-                   data['filename'],
-                   language              
+                   # data['length'],
+                   # data['offset'],
+                   # data['filename'],
+#                    language
                 )
             return tup
         except:
             return ()
-        
+
+
 def process_index_file(file_name):
     print('Unzipping index file ... ')
-    
+
     df_name = file_name.replace('.gz','.feather')
     file_unzipped = file_name.split('.gz')[0]
 
@@ -104,72 +107,65 @@ def process_index_file(file_name):
 
     lines = read_every_line(file_unzipped, 1e8)
     print('{} lines extracted'.format(len(lines)))
-    
-    print('Pre-processing index lines ... ')
-    # out = list_multiprocessing(lines, process_index_file_line, workers=8)
-    out = []
 
-    for line in lines:
-        out.append(process_index_file_line(line))
-    
+    print('Pre-processing index lines ... ')
+    out = list_multiprocessing(lines, process_index_file_line, workers=4)
+#     out = []
+
+#     for line in lines:
+#         out.append(process_index_file_line(line))
+
     # filter out blank lines
     out =  [_ for _ in out if _ != ()]
 
-    print('Index pre-processed ... ')
+    print('Index pre-processed!')
 
     print('Processing index dataframe ... ')
 
-    # ts_list       = [_[0] for _ in out]
+    ts_list       = [_[0] for _ in out]
     url_list      = [_[1] for _ in out]
-    # tld           = [_[2] for _ in out]
+    tld           = [_[2] for _ in out]
     # length_list   = [_[3] for _ in out]
     # offset_list   = [_[4] for _ in out]
     # warc_list     = [_[5] for _ in out]
     # language_list = [_[6] for _ in out]
 
-    cols = ['ts','url','tld','length','offset','warc','language']
+    cols = ['ts','url','tld']#,'length','offset','warc','language']
     df = pd.DataFrame(data={
         'ts':ts_list,
         'url':url_list,
         'tld':tld,
-        'length':length_list,
-        'offset':offset_list,
-        'warc':warc_list,
-        'language':language_list}
+#         'length':length_list,
+#         'offset':offset_list,
+#         'warc':warc_list,
+#         'language':language_list
+    }
                       ,columns=cols)
 
-    df['wet'] = df.warc.apply(lambda x: x.replace('/warc/','/wet/').replace('.warc.','.warc.wet.'))
-    df['wet'] = df['wet'].apply(lambda x: file_prefix + x)
+#     df['wet'] = df.warc.apply(lambda x: x.replace('/warc/','/wet/').replace('.warc.','.warc.wet.'))
+#     df['wet'] = df['wet'].apply(lambda x: file_prefix + x)
 
-    print('Index dataframe is ready ... ')
-    
-    os.remove(file_name) 
-    os.remove(file_unzipped) 
 
-    print('Files removed ... ')
-    
+#     os.remove(file_name)
+#     os.remove(file_unzipped)
+#     print('Files removed ... ')
+
     df = df.dropna().drop_duplicates().reset_index(drop=True)
+    print('Index dataframe is ready!')
+
+    print('Saving Dataframe ... ')
     df.to_feather(df_name)
-    
-    print('Df saved ... ')        
+    print('Dataframe saved ... ')
 
 
-'''To do:
-add arguments for:
-- cc-index file name
-    - already unzipped or not
 
-
-'''
-
-if __name__ == "__main__":
-    n = 10 # it takes X min per cc_index_file to process
-
-    # Make List of files in folder to process -- for now, don't do
-    # file_list = [f for f in os.listdir(storage_folder) 
-    #                 if os.path.isfile(os.path.join(storage_folder, f))]
-    
-    # Assumes cc-index.paths.gz
+def main():
+    '''Assumes cc-index.paths.gz has already been downloaded to `storage_folder`.
+        The `cc-index.paths` file contains paths to several hundred index files.
+        Each compressed index file is ~775 MB, contains 7-10 million URLs,
+        takes ~20 min to download, is ~6 GB once unzipped, and takes >100 min to
+        extract and process, and results in a ~ 1 GB DataFrame of URLs & record IDs.
+    '''
     index_file_name = 'cc-index.paths.gz'
     file_name = os.path.join(storage_folder, index_file_name)
     file_unzipped = file_name.split('.gz')[0]
@@ -179,22 +175,29 @@ if __name__ == "__main__":
             with open(file_unzipped, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
-    cdx_lines = read_every_line(file_unzipped, 1e8)
-    print('{} lines extracted'.format(len(cdx_lines)))
-    cdx_lines = [line.replace('\n','') for line in cdx_lines]
+    idx_lines = read_every_line(file_unzipped, 1e8) # aka cc_indexes
+    num_lines = len(idx_lines)
+    print('{} lines extracted'.format(num_lines))
+    idx_lines = [line.replace('\n','') for line in idx_lines]
 
-    file_dict = collections.OrderedDict()
+    i = random.choice(range(num_lines))
+    idx_root = cdx_lines[i]
+    idx_file = idx.split('/')[-1]
+    # file_dict[os.path.join(storage_folder, cc_index_file)] = file_prefix + cc_index
+    local_file_path = os.path.join(storage_folder, idx_file)
+    url = remote_file_prefix + idx_root
 
-    # iterate over the index files
-    for i, cc_index in enumerate(cdx_lines[:n]):
-        cc_index_file = cc_index.split('/')[-1]
-        file_dict[os.path.join(storage_folder, cc_index_file)] = file_prefix + cc_index
-    
-    for i,(file_name, url) in enumerate(tqdm(file_dict.items())):
-        print('PROCESSING INDEX FILE [{}]/[{}] ...'.format(i,len(file_dict)))
-        print('Downloading index file {} ...'.format(file_name))
-        save(url, file_name)
-        print('Processing index file...')
-        process_index_file(file_name)
-        gc.collect()
-        print(' ')
+    start_time = time.time()
+    print('PROCESSING INDEX FILE ...')
+    print('Downloading index file {} ...'.format(local_file_path))
+    save(url, local_file_path)
+    print('Processing index file...')
+    process_index_file(local_file_path)
+    gc.collect()
+    duration = int((time.time() - start_time) / 60)
+    print('Elapsed time {} min'.format(duration))
+
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,49 @@
+1. Getting data
+  A. Clean URLs
+    Refs:
+    - Schema of cc-index: https://commoncrawl.s3.amazonaws.com/cc-index/table/cc-main/index.html
+
+   Approach A
+    - cloned cc-pyspark repo (https://github.com/commoncrawl/cc-pyspark)
+    - had to edit 'get-data.sh' bash script to work on Mac
+
+   Approach B:
+   - found github repo with "simple" scripts:
+      - https://spark-in.me/post/parsing-common-crawl-in-two-simple-commands
+      - https://gist.github.com/snakers4/40c700745f1c811a82bb7a9d8d5d21dd
+   - modified parse_cc_index.py
+   - Notes:
+      - see notes in parse_cc_index_kf.py
+
+  B. Phishing URLs
+    - from given link ()
+    - downloaded more from https://www.phishtank.com/
+    - after removing duplicates, had 11,339 total
+
+2. Proportion decision
+  - one cc-index file yielded > 9 million URLs
+  - total # of phishing URLs = 11,000
+  - this a is rate of 0.11%
+  - Found a Symantec report that gave a figure of 0.6%
+    - Phishing URLs = 0.6% of all URLs in 2018 (up from 0.4% in 2017)
+    - ref: https://www.symantec.com/content/dam/symantec/docs/reports/istr-24-2019-en.pdf
+      table, page 48
+  - this seems high, so I'll stick with my dataset rate of 0.1%
+
+
+3. Features
+   Consulted various sources for feature ideas:
+   - https://hcis-journal.springeropen.com/articles/10.1186/s13673-016-0064-3
+   - https://www.researchgate.net/publication/324014302_Malicious_URLs_Detection_Using_Decision_Tree_Classifiers_and_Majority_Voting_Technique
+   
+
+99. Collect random URLs
+  - the ones I have all start with 'C'
+
+100. If time, clean up:
+- move phishtank.com app key to config file
+
+101. If I had more time / how to improve model:
+  - Additional Features
+    - Page Rank (https://www.alexa.com/topsites)
+    -
