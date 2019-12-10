@@ -75,6 +75,7 @@ def main(filename):
     # print('Creating features...')
 
     # extract TLD parts
+    df['protocol'] = df['url'].apply(lambda x: x.split('://')[0])
     df['tld_extract'] = df['url'].map(tldextract.extract)
     df['subdomain'] = df['tld_extract'].apply(lambda x: x.subdomain)
     df['domain'] = df['tld_extract'].apply(lambda x: x.domain)
@@ -124,6 +125,13 @@ def main(filename):
         col_name = word + '_ind'
         df[col_name] = np.where(df['url'].str.count(word) == 0, 0, 1)
 
+    cols_to_convert = ['length_path', 'length_domain', 'url_slash_cnt',
+       'url_digit_cnt', 'url_special_char_cnt', 'url_reserved_char_cnt']
+
+    for col in cols_to_convert:
+        new_col_name = col + '_frac_url_len'
+        df[new_col_name] = df[col] / df['length_url']
+        
     # Save data
         # pickling does not work. Use feather instead
     # print('Saving data...')

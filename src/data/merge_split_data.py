@@ -73,5 +73,5 @@ if __name__ == '__main__':
     test_df.to_pickle(os.path.join(output_folder, 'test_df.pkl'))
 
     print('Script complete!')
-    duration = time.time() - start_time / 60
+    duration = (time.time() - start_time) / 60
     print('Elapsed time: {:.0f} minutes'.format(duration))

@@ -15,14 +15,16 @@ Options
     -t                      Test mode.
 
 '''
-
+import os
+import logging
+import pickle
 import pandas as pd
 from docopt import docopt
 from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 import feather
 
 # Load data
-def main():
+def main(filename):
     file_path = os.path.join('../../data/interim', filename)
     save_path = '../../data/processed/'
 
@@ -31,12 +33,13 @@ def main():
     print('Loading data...')
     df = pd.read_pickle(file_path)
 
+
+    stopwords = set(ENGLISH_STOP_WORDS).union(set(('com', 'net', 'gov', 'edu', 'http', 'https', 'www')))
     # The token pattern excludes "words" that start with a digit or
     # an underscore (_).
     vectorizer = TfidfVectorizer(ngram_range=(1,1),
                                  token_pattern='(?u)\\b[a-zA-Z]\\w+\\b',
                                  stop_words=stopwords)
-    stopwords = set(ENGLISH_STOP_WORDS).union(set(('com', 'net', 'gov', 'edu', 'http', 'https', 'www')))
     tfidf_output = vectorizer.fit_transform(df['url'])
     tfidf_features = vectorizer.get_feature_names()
     print('Total number of features: {}'.format(len(tfidf_features)))
@@ -63,6 +66,8 @@ if __name__ == '__main__':
     arguments = docopt(__doc__, help=True)
     filename = arguments['<filename>']
     test_mode = arguments['-t']
+
+    logging.basicConfig(level=logging.DEBUG)
 
     if test_mode:
         test(filename)
