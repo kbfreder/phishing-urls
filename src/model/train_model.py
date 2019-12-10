@@ -15,17 +15,19 @@ Options
     -t                      Test mode.
 
 '''
-import os, sys
+import os
+import sys
 import time
 import re
 import feather
+import joblib
 import pandas as pd
-import numpy as np
 from docopt import docopt
 
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import FeatureUnion, make_pipeline
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(os.path.curdir)))
 # project_dir = os.path.dirname(os.path.abspath(os.path.curdir))
@@ -38,10 +40,10 @@ from model import pipeline as p
 model_cols = ['subdomain_null_ind', 'subdomain_www_ind', 'length_url',
               'domain_dot_cnt', 'path_dot_cnt', 'hostname_dash_cnt',
               'hostname_entropy', 'url_entropy', 'php_ind', 'abuse_ind',
-              'admin_ind','verification_ind',
-              'length_path_frac_url_len', 'length_domain_frac_url_len',
-              'url_slash_cnt_frac_url_len', 'url_digit_cnt_frac_url_len',
-              'url_special_char_cnt_frac_url_len', 'url_reserved_char_cnt_frac_url_len']
+              'admin_ind', 'verification_ind', 'length_path_frac_url_len',
+              'length_domain_frac_url_len', 'url_slash_cnt_frac_url_len',
+              'url_digit_cnt_frac_url_len', 'url_special_char_cnt_frac_url_len',
+              'url_reserved_char_cnt_frac_url_len']
 
 
 def main(input_file, output_file, model_cols):
@@ -86,15 +88,17 @@ def main(input_file, output_file, model_cols):
     clf = RandomForestClassifier(n_estimators=100, max_depth=10, criterion='entropy')
     pipe = make_pipeline(preproc_pipe, clf)
 
+    # Fit & predict
     print('Fitting model....')
     pipe.fit(X, y)
     print('Predicting train...')
     y_pred = pipe.predict(X)
-    score = f1_score(y, y_pred)
+    score = f1_score(y, y_pred, pos_label='phishing')
     print('Training score: ', score)
 
+    # Save model & predicions
     print('Saving model...')
-    outputh_path = os.path.join('../../models/', output_file)
+    output_path = os.path.join('../../models/', output_file)
     joblib.dump(pipe, output_path)
 
     u.pickle_this(y_pred, '../../data/processed/train_pred.pkl')
