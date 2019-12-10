@@ -36,15 +36,9 @@ sys.path.append(new_path)
 
 import util as u
 from model import pipeline as p
+import model_config as cfg
 
-model_cols = ['subdomain_null_ind', 'subdomain_www_ind', 'length_url',
-              'domain_dot_cnt', 'path_dot_cnt', 'hostname_dash_cnt',
-              'hostname_entropy', 'url_entropy', 'php_ind', 'abuse_ind',
-              'admin_ind', 'verification_ind', 'length_path_frac_url_len',
-              'length_domain_frac_url_len', 'url_slash_cnt_frac_url_len',
-              'url_digit_cnt_frac_url_len', 'url_special_char_cnt_frac_url_len',
-              'url_reserved_char_cnt_frac_url_len']
-
+clf_params = cfg.clf_params
 
 def main(input_file, output_file, model_cols):
     start_time = time.time()
@@ -85,7 +79,8 @@ def main(input_file, output_file, model_cols):
 
     # Pipeline
     preproc_pipe = FeatureUnion(p.gen_pipeline(model_cols, proc_dict))
-    clf = RandomForestClassifier(n_estimators=100, max_depth=10, criterion='entropy')
+    # clf = RandomForestClassifier(n_estimators=100, max_depth=10, criterion='entropy')
+    clf = RandomForestClassifier(*params)
     pipe = make_pipeline(preproc_pipe, clf)
 
     # Fit & predict
@@ -118,6 +113,7 @@ if __name__ == '__main__':
     input_file = arguments['--input']
     output_file = arguments['--output']
     test_mode = arguments['-t']
+    model_cols = cfg.model_cols
 
     if test_mode:
         test(input_file, output_file, model_cols)
