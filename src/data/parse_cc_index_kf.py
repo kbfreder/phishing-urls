@@ -181,8 +181,8 @@ def main():
     idx_lines = [line.replace('\n','') for line in idx_lines]
 
     i = random.choice(range(num_lines))
-    idx_root = cdx_lines[i]
-    idx_file = idx.split('/')[-1]
+    idx_root = idx_lines[i]
+    idx_file = idx_root.split('/')[-1]
     # file_dict[os.path.join(storage_folder, cc_index_file)] = file_prefix + cc_index
     local_file_path = os.path.join(storage_folder, idx_file)
     url = remote_file_prefix + idx_root
