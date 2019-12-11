@@ -190,9 +190,15 @@ def main():
     # num_lines = len(idx_lines)
     print('{} lines extracted'.format(len(idx_lines)))
 
+<<<<<<< HEAD
     idx_file = random.choice(idx_lines)
     # idx_root = cdx_lines[i]
     idx_root = idx.split('/')[-1]
+=======
+    i = random.choice(range(num_lines))
+    idx_root = idx_lines[i]
+    idx_file = idx_root.split('/')[-1]
+>>>>>>> bc738dda4b585e0ac3bef5587bb0dddeeeda3fd6
     # file_dict[os.path.join(storage_folder, cc_index_file)] = file_prefix + cc_index
     local_file_path = os.path.join(storage_folder, idx_root)
     url = remote_file_prefix + idx_file
