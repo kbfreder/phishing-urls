@@ -1,18 +1,19 @@
 '''make_features.py
 
-Make features from <filename> data. Loads from ../../data/interim.
-Saves to original file
+Loads data from ../../data/interim/<filename> data. Creates features.
+Saves as feather file format, with original filename stub (minus file
+extension). Ex: train_df.pkl --> train_df.feather.
 
 Usage:
     make_features.py <filename> [options]
 
 Arguments:
     filename <file>       Filename, with extension. Data will be loaded
-                            from ../../data/interim.
+                          from ../../data/interim.
 
 Options
-    -h --help               Show docstring.
-    -t                      Test mode.
+    -h --help             Show docstring.
+    -t                    Test mode.
 
 '''
 
@@ -30,12 +31,11 @@ import feather
 logging.basicConfig(level=logging.DEBUG)
 
 
-def shannon_specific_entropy(X):
-    N = len(X)
-    c = Counter(X)
-    n = len(c.keys())
+def shannon_specific_entropy(s):
+    N = len(s)
+    c = Counter(s)
     h_sum = 0
-    for x, n_i in c.items():
+    for _, n_i in c.items():
         f_i = n_i/N
         h_sum += (f_i) * np.log2(f_i)
 
@@ -43,17 +43,15 @@ def shannon_specific_entropy(X):
     return h_sum
 
 def get_query(url):
-    QUERY_REGEX = re.compile(r"\?([a-z0-9\-._~%!$&'()*+,;=:@/]*)#?")
+    query_regex = re.compile(r"\?([a-z0-9\-._~%!$&'()*+,;=:@/]*)#?")
     try:
-        return re.search(QUERY_REGEX, url).group(0)
+        return re.search(query_regex, url).group(0)
     except AttributeError:
         return None
 
 def get_path(url):
     # note: this returns '/' if there is no path
     # source: https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s12.html
-
-    # path_regex = re.compile(r"([a-z0-9\-._~%!$&'()*+,;=:@/]*)")
     path_regex = re.compile(r"^([a-z][a-z0-9+\-.]*:(//[^/?#]+)?)?([a-zA-Z0-9\-._~%!$&'()*+,;=:@/]*)")
     try:
         return re.findall(path_regex, url)[0][-1]
@@ -63,17 +61,14 @@ def get_path(url):
 def main(filename):
     start_time = time.time()
 
-    input_path = os.path.join('../../data/interim', filename)
-
     # Load data
     logging.debug('Loading data...')
-    # print('Loading data...')
+    input_path = os.path.join('../../data/interim', filename)
 
     df = pd.read_pickle(input_path)
 
+    # MAKE FEATURES
     logging.debug('Creating features...')
-    # print('Creating features...')
-
     # extract TLD parts
     df['protocol'] = df['url'].apply(lambda x: x.split('://')[0])
     df['tld_extract'] = df['url'].map(tldextract.extract)
@@ -83,7 +78,6 @@ def main(filename):
     df['hostname'] = df['tld_extract'].apply(lambda x: '.'.join(x))
     df['path'] = df['url'].apply(get_path)
     df['query'] = df['url'].apply(get_query)
-
 
     # Subdomain ind's
     df['subdomain_null_ind'] = np.where(df['subdomain'] == '', 1, 0)
@@ -126,15 +120,15 @@ def main(filename):
         df[col_name] = np.where(df['url'].str.count(word) == 0, 0, 1)
 
     cols_to_convert = ['length_path', 'length_domain', 'url_slash_cnt',
-       'url_digit_cnt', 'url_special_char_cnt', 'url_reserved_char_cnt']
+                       'url_digit_cnt', 'url_special_char_cnt',
+                       'url_reserved_char_cnt']
 
     for col in cols_to_convert:
         new_col_name = col + '_frac_url_len'
         df[new_col_name] = df[col] / df['length_url']
-        
+
     # Save data
         # pickling does not work. Use feather instead
-    # print('Saving data...')
     logging.debug('Saving data...')
     df.drop(columns=['tld_extract'], inplace=True)
     output_path = os.path.join('../../data/processed', filename.replace('.pkl', '.feather'))

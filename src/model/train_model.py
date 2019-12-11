@@ -21,7 +21,7 @@ import time
 import re
 import feather
 import joblib
-import pandas as pd
+# import pandas as pd
 from docopt import docopt
 
 from sklearn.preprocessing import StandardScaler
@@ -53,14 +53,13 @@ def main(input_file, output_file, model_cols):
     target = 'label'
     X = df.drop(columns=target)
     y = df[target]
-    # enc = LabelEncoder()
-    # y_enc = enc.fit_transform(y)
 
     all_cols = df.columns
 
     # Preprocessing
     print('Getting pipeline ready...')
     proc_dict = {
+    # keep code here for future, when we can use this feature
     #     'base_suffix':[p.Consolidate(1), OneHotEncoder(handle_unknown='ignore')]
                 }
 
@@ -79,8 +78,7 @@ def main(input_file, output_file, model_cols):
 
     # Pipeline
     preproc_pipe = FeatureUnion(p.gen_pipeline(model_cols, proc_dict))
-    # clf = RandomForestClassifier(n_estimators=100, max_depth=10, criterion='entropy')
-    clf = RandomForestClassifier(*params)
+    clf = RandomForestClassifier(**clf_params)
     pipe = make_pipeline(preproc_pipe, clf)
 
     # Fit & predict
@@ -105,7 +103,9 @@ def main(input_file, output_file, model_cols):
 
 def test(input_file, output_file, model_cols):
     print('Running test...')
-    print(model_cols)
+    # print(model_cols)
+    clf = RandomForestClassifier(**clf_params)
+    print(clf)
 
 
 if __name__ == '__main__':

@@ -135,3 +135,5 @@ models/*
 !src/features/
 cc-pyspark/
 *Copy*.ipynb
+Purgatory/
+docs/*

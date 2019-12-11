@@ -20,7 +20,7 @@ import logging
 import pickle
 import pandas as pd
 from docopt import docopt
-from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
+from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
 import feather
 
 # Load data
@@ -31,16 +31,24 @@ def main(filename):
     # Load data
     logging.debug('Loading data...')
     print('Loading data...')
-    df = pd.read_pickle(file_path)
+    file_ext = file_path.split('.')[-1]
 
+    if file_ext in ('pkl', 'pickle'):
+        df = pd.read_pickle(file_path)
+    elif file_ext == 'feather':
+        feather.read_dataframe(file_path)
+    else:
+        print('File format not recognized.')
+        return
 
-    stopwords = set(ENGLISH_STOP_WORDS).union(set(('com', 'net', 'gov', 'edu', 'http', 'https', 'www')))
+    url_words = set('com', 'net', 'gov', 'edu', 'http', 'https', 'www')
+    stopwords = set(ENGLISH_STOP_WORDS).union(url_words)
     # The token pattern excludes "words" that start with a digit or
     # an underscore (_).
-    vectorizer = TfidfVectorizer(ngram_range=(1,1),
+    vectorizer = CountVectorizer(ngram_range=(1, 1),
                                  token_pattern='(?u)\\b[a-zA-Z]\\w+\\b',
                                  stop_words=stopwords)
-    tfidf_output = vectorizer.fit_transform(df['url'])
+    tfidf_output = vectorizer.fit_transform(df['path'])
     tfidf_features = vectorizer.get_feature_names()
     print('Total number of features: {}'.format(len(tfidf_features)))
 
@@ -50,7 +58,7 @@ def main(filename):
     feather.write_dataframe(tfidf_output, os.path.join(save_path, output_filename))
 
     features_filename = 'tfidf_features_' + filestub + '.txt'
-    with open (os.path.join(save_path, features_filename), 'wb') as picklefile:
+    with open(os.path.join(save_path, features_filename), 'wb') as picklefile:
         pickle.dump(tfidf_features, picklefile)
 
     # to open:

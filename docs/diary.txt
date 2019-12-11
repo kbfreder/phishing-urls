@@ -35,7 +35,7 @@
    Consulted various sources for feature ideas:
    - https://hcis-journal.springeropen.com/articles/10.1186/s13673-016-0064-3
    - https://www.researchgate.net/publication/324014302_Malicious_URLs_Detection_Using_Decision_Tree_Classifiers_and_Majority_Voting_Technique
-   
+   - https://www.hindawi.com/journals/wcmc/2018/4678746/
 
 99. Collect random URLs
   - the ones I have all start with 'C'
@@ -44,6 +44,9 @@
 - move phishtank.com app key to config file
 
 101. If I had more time / how to improve model:
+  - More randomized sampling of benign URLs
+    - see https://pypi.org/project/cdx-toolkit/ , https://github.com/cocrawler/cdx_toolkit
+
   - Additional Features
     - Page Rank (https://www.alexa.com/topsites)
     -
