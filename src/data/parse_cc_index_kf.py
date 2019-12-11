@@ -1,3 +1,17 @@
+'''Parses a cc-index file. Modified from:
+    https://gist.github.com/snakers4/40c700745f1c811a82bb7a9d8d5d21dd
+
+    Assumes cc-index.paths.gz has already been downloaded to `storage_folder`.
+        The `cc-index.paths` file contains paths to several hundred index files.
+        Each compressed index file is ~775 MB, contains 7-10 million URLs,
+        takes ~20 min to download, is ~6 GB once unzipped, and takes >100 min to
+        extract and process, and results in a ~ 1 GB DataFrame of URLs & record IDs.
+
+    - From this file output (which is a list of index file paths), choose
+      one index file at random to download, extract, and parse.
+
+'''
+
 import gc
 import gzip
 import time
@@ -12,8 +26,7 @@ import urllib.request
 from multiprocessing import Pool
 import random
 
-
-storage_folder = '../data/raw/index_paths/'
+storage_folder = '../../data/raw/index_paths/'
 remote_file_prefix = 'https://commoncrawl.s3.amazonaws.com/'
 
 def read_every_line(fname, max_lines=-1):
@@ -24,6 +37,7 @@ def read_every_line(fname, max_lines=-1):
             if i>max_lines and max_lines>0:
                 break
     return lines
+
 
 def reporthook(count, block_size, total_size):
     global start_time
@@ -38,8 +52,10 @@ def reporthook(count, block_size, total_size):
                     (percent, progress_size / (1024 * 1024), speed, duration))
     sys.stdout.flush()
 
+
 def save(url, filename):
     urllib.request.urlretrieve(url, filename, reporthook)
+
 
 def list_multiprocessing(param_lst,
                          func,
@@ -50,10 +66,6 @@ def list_multiprocessing(param_lst,
     with Pool(workers) as p:
         apply_lst = [([params], func, i, kwargs) for i,params in enumerate(param_lst)]
         result = list(tqdm(p.imap(_apply_lst, apply_lst), total=len(apply_lst)))
-
-    # lists do not need such sorting, but this can be useful later
-    result=sorted(result,key=lambda x:x[0])
-    return [_[1] for _ in result]
 
 
 def _apply_lst(args):
@@ -75,6 +87,7 @@ def process_index_file_line(line):
     if data['status'] != '200':
         return ()
     else:
+        # keep code here in case we want to pull in language in the future
 #         try:
 #             language = data['languages']
 #         except:
@@ -85,17 +98,18 @@ def process_index_file_line(line):
             tup = (ts,
                    data['url'],
                    _tldextract.suffix,
+        # keep code here in case we want to pull in these features in the future
                    # data['length'],
                    # data['offset'],
                    # data['filename'],
-#                    language
+                   # language
                 )
             return tup
         except:
             return ()
 
 
-def process_index_file(file_name):
+def process_index_file(file_name, multiproc=True):
     print('Unzipping index file ... ')
 
     df_name = file_name.replace('.gz','.feather')
@@ -109,11 +123,13 @@ def process_index_file(file_name):
     print('{} lines extracted'.format(len(lines)))
 
     print('Pre-processing index lines ... ')
-    out = list_multiprocessing(lines, process_index_file_line, workers=4)
-#     out = []
+    if multiproc:
+        out = list_multiprocessing(lines, process_index_file_line, workers=4)
+    else:
+        out = []
 
-#     for line in lines:
-#         out.append(process_index_file_line(line))
+        for line in lines:
+            out.append(process_index_file_line(line))
 
     # filter out blank lines
     out =  [_ for _ in out if _ != ()]
@@ -121,7 +137,6 @@ def process_index_file(file_name):
     print('Index pre-processed!')
 
     print('Processing index dataframe ... ')
-
     ts_list       = [_[0] for _ in out]
     url_list      = [_[1] for _ in out]
     tld           = [_[2] for _ in out]
@@ -160,14 +175,9 @@ def process_index_file(file_name):
 
 
 def main():
-    '''Assumes cc-index.paths.gz has already been downloaded to `storage_folder`.
-        The `cc-index.paths` file contains paths to several hundred index files.
-        Each compressed index file is ~775 MB, contains 7-10 million URLs,
-        takes ~20 min to download, is ~6 GB once unzipped, and takes >100 min to
-        extract and process, and results in a ~ 1 GB DataFrame of URLs & record IDs.
-    '''
-    index_file_name = 'cc-index.paths.gz'
-    file_name = os.path.join(storage_folder, index_file_name)
+
+    path_file = 'cc-index.paths.gz'
+    file_name = os.path.join(storage_folder, path_file)
     file_unzipped = file_name.split('.gz')[0]
 
     if not os.path.isfile(file_unzipped):
@@ -175,17 +185,17 @@ def main():
             with open(file_unzipped, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
-    idx_lines = read_every_line(file_unzipped, 1e8) # aka cc_indexes
-    num_lines = len(idx_lines)
-    print('{} lines extracted'.format(num_lines))
+    idx_lines = read_every_line(file_unzipped, 1e8) # aka cc_indexes in original code
     idx_lines = [line.replace('\n','') for line in idx_lines]
+    # num_lines = len(idx_lines)
+    print('{} lines extracted'.format(len(idx_lines)))
 
-    i = random.choice(range(num_lines))
-    idx_root = cdx_lines[i]
-    idx_file = idx.split('/')[-1]
+    idx_file = random.choice(idx_lines)
+    # idx_root = cdx_lines[i]
+    idx_root = idx.split('/')[-1]
     # file_dict[os.path.join(storage_folder, cc_index_file)] = file_prefix + cc_index
-    local_file_path = os.path.join(storage_folder, idx_file)
-    url = remote_file_prefix + idx_root
+    local_file_path = os.path.join(storage_folder, idx_root)
+    url = remote_file_prefix + idx_file
 
     start_time = time.time()
     print('PROCESSING INDEX FILE ...')
