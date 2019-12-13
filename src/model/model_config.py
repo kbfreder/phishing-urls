@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-clf_params = {'n_estimators' : 75,
+clf_params = {'n_estimators' : 100,
                         'max_depth' : 10,
                         'criterion': 'entropy'}
 
