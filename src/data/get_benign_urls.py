@@ -3,9 +3,9 @@
 Downloads URL data from cc-index paths
 
 Usage:
-    get_benign_urls.py download <n-chunks> [options]
+    get_benign_urls.py download <n-chunks> <chunk-size> [options]
     get_benign_urls.py parse [options]
-    get_benign_urls.py download <n-chunks> parse
+    get_benign_urls.py download <n-chunks> <chunk-size> parse
     get_benign_urls.py [options]
 
 Options
@@ -75,8 +75,6 @@ def decompress_stream(stream):
     yield o.flush()
 
 
-
-
 # Variables derived from the above
 # storage_folder = './crawl-data/CC-MAIN-' + yearmonth
 paths_file = os.path.join(storage_folder, paths_file_name)
@@ -87,43 +85,41 @@ if not os.path.isdir(index_folder):
     os.mkdir(index_folder)
 
 
-def download_index_data(n_chunks):
+def download_index_data(n_chunks, chunk_size):
     # Read paths from paths file, convert to URLs
     paths = read_every_line(paths_file_unzipped, 1e8)
     path_urls = [url_prefix + path for path in paths]
     print('{} paths extracted from path file'.format(len(paths)))
 
     # Download chunks of data from each index url
-    i = 0
     start_time = time.time()
-    for url in path_urls:
+    for i, url in enumerate(path_urls, 1):
         # Derive save-to path from url
         save_file_name = url.split('/')[-1].replace('.gz', '')
 
         if 'cdx-' in save_file_name:
             save_path = os.path.join(index_folder, save_file_name)
 
-            # Open a stream Request to the URL, define generator
-            r = requests.get(url, stream=True)
-            data_stream = decompress_stream(r.iter_content(1024))
-
             # Create file, wrtie data chunks to it:
             save_file = open(save_path, 'wb')
 
-            # print('Downloading {}'.format(save_file_name))
-            if i+1 % 10 == 0 or i+1 == 1:
-                sys.stdout.write('\rDownloading data from index {} out of {}'.format(i, len(path_urls)))
-                sys.stdout.flush()
+            # Open a stream Request to the URL, define generator
+            with requests.get(url, stream=True) as r:
+                data_stream = decompress_stream(r.iter_content(chunk_size))
 
-            for _ in range(n_chunks):
-                chunk = next(data_stream)
-                if chunk:
-                    save_file.write(chunk)
+                # print('Downloading {}'.format(save_file_name))
+                if i % 10 == 0 or i == 1:
+                    sys.stdout.write('\rDownloading data from index {} out of {}'.format(i, len(path_urls)))
+                    sys.stdout.flush()
+
+                for _ in range(n_chunks):
+                    chunk = next(data_stream)
+                    if chunk:
+                        save_file.write(chunk)
 
             # Close file & Request connection
             save_file.close()
-            r.close()
-        i += 1
+
 
     print('All downloads complete!')
     duration = (time.time() - start_time) / 60
@@ -197,7 +193,7 @@ if __name__ == '__main__':
         print('Test mode!')
 
     if arguments['download']:
-        download_index_data(int(arguments['<n-chunks>']))
+        download_index_data(int(arguments['<n-chunks>'], nt(arguments['<chunk-size>']))
 
     if arguments['parse']:
         parse_files()
