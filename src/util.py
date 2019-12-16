@@ -27,6 +27,20 @@ def open_pickle(filepath):
 
 seed = 19
 
+
+def read_every_line(fname, max_lines=-1):
+    lines = []
+    
+    with open(fname, encoding='utf-8') as f:
+        for i, line in enumerate(f):
+            lines.append(line.replace('\n',''))
+            if i > max_lines and max_lines > 0:
+                break
+
+    return lines
+
+
+
 def assess_model_df(preprocessor, model, X, y, n=5):
     '''Input X is a dataframe. Performs stratified k-fold cross-validation,
     returns ALL THE THINGS:
@@ -272,4 +286,4 @@ def plot_prec_recall_curve(y_true, y_proba, pos_label=1):
 
     plt.show()
 
-    return prec, rec
+    return prec, rec, thr_adj
